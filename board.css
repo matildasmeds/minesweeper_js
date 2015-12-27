@@ -1,0 +1,45 @@
+body {
+  font-family: 'Lucida Console', 'Lucida Sans Typewriter', monospace;
+  font-size: 13px;
+  background-color: tan;
+}
+
+.row {
+  padding: 0;
+  margin: 0;
+  height: 20px;
+  width: 100%;
+  float: left;
+  text-align: center;
+}
+
+#start-buttons {
+}
+
+#start-buttons button {
+  color: purple;
+}
+
+.row__cell {
+  width: 20px;
+  height: 20px;
+  float: left;
+  border: solid 1px wheat;
+  color: white;
+  background-color: white;
+  margin-left: -1px;
+  margin-bottom: -1px;
+  padding-top: 3px;
+}
+
+.row__cell.hover {
+  background-color: sandybrown;
+}
+
+.row__cell.opened {
+  background-color: tan;
+}
+
+.row__cell.marked {
+  color: purple;
+}
