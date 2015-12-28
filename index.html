@@ -11,6 +11,10 @@
   <br/>
   <div id='board'></div>
   <script>
+//  console.log(String.fromCharCode(8855));
+//  console.log(String.fromCharCode(9786));
+//  console.log(String.fromCharCode(9785));
+    // User creates a new game by pressing start buttons
     function createStartButtons() {
       function createButton(text, className, params) {
         var button = document.createElement('button');
@@ -30,6 +34,150 @@
       div.appendChild(createButton('Hard', 'hard', params));
     }
     createStartButtons();
+    // Start buttons call createGame at onClick event
+    function createGame(params) {
+      createBoardElements(params.width,params.height);
+      window.game = new Game(params.width, params.height, params.seed);
+    }
+    // Game, references through window.game holds mine map and game state
+    function Game(width, height, seed) {
+      function booleanCellsMap(width, height) {
+        var map = new Array(height);
+        for (var j = 0; j < height; j++) {
+          map[j] = new Array(width);
+          for (var i = 0; i < width; i++) {
+            map[j][i] = false;
+          }
+        }
+        return map;
+      }
+      this.width = width;
+      this.height = height;
+      this.seed = seed;
+      this.openedCellsMap = new booleanCellsMap(width, height);
+      this.markedCellsMap = new booleanCellsMap(width, height);
+      this.mineMap = []; // how to make private?
+      this.mineCount = null;
+    }
+    (function setupGameMethods() {
+    // Wrap the Board prototype setup methods in a function?
+      Game.prototype.startGame = function(clickedCell) {
+        this.createMines(clickedCell);
+      }
+      Game.prototype.gameStarted = function() {
+        return this.mineMap.length > 0;
+      }
+      Game.prototype.isInside = function(x,y) {
+        return ( 0 <= x && x < this.width && 0 <= y && y < this.height);
+      }
+      Game.prototype.neighbourCoords = function(x,y) {
+        var arr = [[x - 1, y], [x + 1, y], [x, y - 1],
+          [x, y + 1], [x - 1, y - 1], [x - 1, y + 1],
+          [x + 1, y - 1], [x + 1, y + 1]];
+        var ret = []
+        for (var i = 0; i < arr.length; i++) {
+          var x = arr[i][0];
+          var y = arr[i][1];
+          if (this.isInside(x, y)) ret.push(arr[i]);
+        }
+        return ret;
+      }
+      Game.prototype.Cell = function(x,y) {
+        var query = 'span[data-x="' + x + '"][data-y="' + y + '"]';
+        this.elt = document.querySelectorAll(query)[0];
+        this.x = x;
+        this.y = y;
+      }
+      Game.prototype.neighbourCellsFor = function(cell) {
+        var ret = [];
+        var neighbours = window.game.neighbourCoords(cell.x, cell.y);
+        for (var i = 0; i < neighbours.length; i++) {
+          var x = neighbours[i][0];
+          var y = neighbours[i][1];
+          var cell = new window.game.Cell(x, y);
+          ret.push(cell);
+        }
+        return ret;
+      }
+      Game.prototype.markOpened = function(cell) {
+        this.openedCellsMap[cell.y][cell.x] = true;
+      }
+      Game.prototype.notOpened = function(cell) {
+        return !this.openedCellsMap[cell.y][cell.x];
+      }
+      Game.prototype.cellsNotOpened = function() {
+        var ret = [];
+        for (var j = 0; j < this.height; j++) {
+          for (var i = 0; i < this.width; i++) {
+            if (!this.openedCellsMap[j][i])
+              ret.push(new this.Cell(i, j));
+          }
+        }
+        return ret;
+      }
+      Game.prototype.markMarked = function(cell) {
+        this.markedCellsMap[cell.y][cell.x] = true;
+      }
+      Game.prototype.notMarked = function(cell) {
+        return !this.markedCellsMap[cell.y][cell.x];
+      }
+      Game.prototype.valueAt = function(cell) {
+        return this.mineMap[cell.y][cell.x];
+      }
+      Game.prototype.isMineCell = function(cell) {
+        if (window.game.valueAt(cell) == 'X') return true;
+      }
+      Game.prototype.createMines = function(cellClicked) {
+        // private helper
+        function mineMap(height, width, cellClicked) {
+          // private helper
+          function tallyNeighbourMines(map, mineCoords) {
+            for (var p = 0; p < mineCoords.length; p++) {
+              var x = mineCoords[p][0];
+              var y = mineCoords[p][1];
+              var coords = window.game.neighbourCoords(x, y);
+              for (var q = 0; q < coords.length; q++) {
+                var i = coords[q][0];
+                var j = coords[q][1];
+                if (window.game.isInside(i,j) && (map[j][i] != 'X')) map[j][i] += 1;
+              }
+            }
+          }
+          // private helpers
+          function doCreateMine(cellClicked) {
+            // do not put a mine in the first cell clicked
+            return Math.random() < window.game.seed && !(cellClicked.x == i && cellClicked.y == j);
+          }
+          function createMine(i, j) {
+            map[j][i] = 'X';
+            mineCoords.push([i,j]);
+          }
+          function createEmpty(i, j) {
+            map[j][i] = 0;
+          }
+          // create mines main method
+          var mineCoords = [];
+          var map = new Array(height);
+          for (var j = 0; j < height; j++) {
+            map[j] = new Array(width);
+            for (var i = 0; i < width; i++) {
+              doCreateMine(cellClicked) ? createMine(i, j) : createEmpty(i, j);
+            }
+          }
+          // setup board
+          tallyNeighbourMines(map, mineCoords);
+          window.game.mineCount = mineCoords.length;
+          return map;
+        }
+        // setup board
+        window.game.mineMap = mineMap(this.height, this.width, cellClicked);
+      }
+    }());
+    // BoardElements are inserted inside #board div
+    // The basic units are rows and cells
+    // Cells have listeners mouseover, mousedown, and mouseout
+    // The game logic is described here and handlers attached to listeners
+    // Starting the game, ending the game, evaluating clicks happen here
     function createBoardElements(width, height) {
       var board = document.getElementById('board');
       clear(board);
@@ -65,16 +213,67 @@
         function clickNotMarked(evt) {
           var cell = getCellFrom(evt);
           if (evt.which === 1) { // leftclick
-            if (!window.board.gameStarted()) // start game if not started
-              window.board.startGame(cell);
-            executeClickOpen(cell);
+            clickOpen(cell);
           } else { // middleclick & rightclick
-            window.board.markMarked(cell);
-            elt = removeListeners(cell);
-            elt.addEventListener('mousedown', unMark);
-            elt.className = 'row__cell marked';
-            elt.innerHTML = 'X';
+            markThis(cell);
           }
+        }
+        function clickOpen(cell) {
+          if (!window.game.gameStarted()) // start game if not started
+            window.game.startGame(cell);
+          executeClickOpen(cell);
+        }
+        function executeClickOpen(cell) {
+          if (window.game.isMineCell(cell)) {
+             loseGame(cell);
+             console.log('BOOM');
+          } else {
+            openThis(cell);
+            if (checkNeighbours(cell)) examineNeighbours(cell);
+          }
+          function loseGame(cell) {
+            elt = removeListeners(cell);
+            elt.innerHTML = String.fromCharCode(164);
+            elt.className = 'row__cell mine';
+            (function removeRemainingListeners() {
+              var cells = window.game.cellsNotOpened();
+              for (var i = 0; i < cells.length; i++) {
+                removeListeners(cells[i]);
+              }
+            }());
+          }
+          function checkNeighbours(cell) {
+            return window.game.valueAt(cell) == 0;
+          }
+          function examineNeighbours(cell) {
+            var arr = window.game.neighbourCellsFor(cell);
+            for (var i = 0; i < arr.length; i++) {
+              var cell = arr[i];
+              if (!canBeOpened(cell)) continue;
+              openThis(cell);
+              if (checkNeighbours(cell)) examineNeighbours(cell);
+            }
+            function canBeOpened(cell) {
+              return (window.game.notOpened(cell) && ! window.game.isMineCell(cell) && window.game.notMarked(cell));
+            }
+          }
+          function openThis(cell) {
+            (function setOpenedStyle() {
+              var val = window.game.valueAt(cell);
+              var new_elt = cell.elt.cloneNode(true);
+              new_elt.className = 'row__cell opened'
+              new_elt.innerHTML = ( val == 0 ? '' : val);
+              cell.elt.parentNode.replaceChild(new_elt, cell.elt);
+            }());
+            window.game.markOpened(cell);
+          }
+        }
+        function markThis(cell) {
+          window.game.markMarked(cell);
+          elt = removeListeners(cell);
+          elt.addEventListener('mousedown', unMark);
+          elt.className = 'row__cell marked';
+          elt.innerHTML = 'X';
         }
         function unMark(evt) {
           if (evt.which === 1) return;
@@ -83,48 +282,19 @@
           addListeners(elt);
           console.log(cell);
         }
-        function getCellFrom(evt) {
-          var x = parseInt(evt.target.getAttribute('data-x'), 10);
-          var y = parseInt(evt.target.getAttribute('data-y'), 10);
-          return new window.board.Cell(x, y);
-        }
         function removeListeners(cell) {
+          // this method is quirky, especially as it 1) has a return value,
+          // and 2) it returns an element not a cell
+          // apparently replacing child is a good way to remove listeners
+          // that's the rationale for the quirkiness
           var new_elt = cell.elt.cloneNode(true);
           cell.elt.parentNode.replaceChild(new_elt, cell.elt);
           return new_elt;
         }
-        function executeClickOpen(cell) {
-          if (window.board.isMineCell(cell)) {
-            console.log('BOOM');
-          } else {
-            openThis(cell);
-            if (checkNeighbours(cell)) examineNeighbours(cell);
-          }
-          function checkNeighbours(cell) {
-            return window.board.valueAt(cell) == 0;
-          }
-          function examineNeighbours(cell) {
-            var arr = window.board.neighbourCellsFor(cell);
-            for (var i = 0; i < arr.length; i++) {
-              var cell = arr[i];
-              if (!canBeOpened(cell)) continue;
-              openThis(cell);
-              if (checkNeighbours(cell)) examineNeighbours(cell);
-            }
-            function canBeOpened(cell) {
-              return (window.board.notOpened(cell) && ! window.board.isMineCell(cell) && window.board.notMarked(cell));
-            }
-          }
-          function openThis(cell) {
-            (function setOpenedStyle() {
-              var val = window.board.valueAt(cell);
-              var new_cell = cell.elt.cloneNode(true);
-              new_cell.className = 'row__cell opened'
-              new_cell.innerHTML = ( val == 0 ? '' : val);
-              cell.elt.parentNode.replaceChild(new_cell, cell.elt);
-            }());
-            window.board.markOpened(cell);
-          }
+        function getCellFrom(evt) {
+          var x = parseInt(evt.target.getAttribute('data-x'), 10);
+          var y = parseInt(evt.target.getAttribute('data-y'), 10);
+          return new window.game.Cell(x, y);
         }
         function mouseOverHandler(evt) {
           (function setHoverStyle() {
@@ -159,132 +329,6 @@
           }
         }
       }());
-    }
-
-    function Board(width, height, seed) {
-      function booleanCellsMap(width, height) {
-        var map = new Array(height);
-        for (var j = 0; j < height; j++) {
-          map[j] = new Array(width);
-          for (var i = 0; i < width; i++) {
-            map[j][i] = false;
-          }
-        }
-        return map;
-      }
-      this.width = width;
-      this.height = height;
-      this.seed = seed;
-      this.openedCellsMap = new booleanCellsMap(width, height);
-      this.markedCellsMap = new booleanCellsMap(width, height);
-      this.mineMap = []; // how to make private?
-      this.mineCount = null;
-    }
-    Board.prototype.startGame = function(clickedCell) {
-      this.createMines(clickedCell);
-    }
-    Board.prototype.gameStarted = function() {
-      return this.mineMap.length > 0;
-    }
-    Board.prototype.isInside = function(x,y) {
-      return ( 0 <= x && x < this.width && 0 <= y && y < this.height);
-    }
-    Board.prototype.neighbourCoords = function(x,y) {
-      var arr = [[x - 1, y], [x + 1, y], [x, y - 1],
-        [x, y + 1], [x - 1, y - 1], [x - 1, y + 1],
-        [x + 1, y - 1], [x + 1, y + 1]];
-      var ret = []
-      for (var i = 0; i < arr.length; i++) {
-        var x = arr[i][0];
-        var y = arr[i][1];
-        if (this.isInside(x, y)) ret.push(arr[i]);
-      }
-      return ret;
-    }
-    Board.prototype.Cell = function(x,y) {
-      var query = 'span[data-x="' + x + '"][data-y="' + y + '"]';
-      this.elt = document.querySelectorAll(query)[0];
-      this.x = x;
-      this.y = y;
-    }
-    Board.prototype.neighbourCellsFor = function(cell) {
-      var ret = [];
-      var neighbours = window.board.neighbourCoords(cell.x, cell.y);
-      for (var i = 0; i < neighbours.length; i++) {
-        var x = neighbours[i][0];
-        var y = neighbours[i][1];
-        var cell = new window.board.Cell(x, y);
-        ret.push(cell);
-      }
-      return ret;
-    }
-    Board.prototype.markOpened = function(cell) {
-      this.openedCellsMap[cell.y][cell.x] = true;
-    }
-    Board.prototype.notOpened = function(cell) {
-      return !this.openedCellsMap[cell.y][cell.x];
-    }
-    Board.prototype.markMarked = function(cell) {
-      console.log(cell);
-      this.markedCellsMap[cell.y][cell.x] = true;
-    }
-    Board.prototype.notMarked = function(cell) {
-      return !this.markedCellsMap[cell.y][cell.x];
-    }
-    Board.prototype.valueAt = function(cell) {
-      return this.mineMap[cell.y][cell.x];
-    }
-    Board.prototype.isMineCell = function(cell) {
-      if (window.board.valueAt(cell) == 'X') return true;
-    }
-    Board.prototype.createMines = function(cellClicked) {
-      // private helper
-      function mineMap(height, width, cellClicked) {
-        // private helper
-        function tallyNeighbourMines(map, mineCoords) {
-          for (var p = 0; p < mineCoords.length; p++) {
-            var x = mineCoords[p][0];
-            var y = mineCoords[p][1];
-            var coords = board.neighbourCoords(x, y);
-            for (var q = 0; q < coords.length; q++) {
-              var i = coords[q][0];
-              var j = coords[q][1];
-              if (board.isInside(i,j) && (map[j][i] != 'X')) map[j][i] += 1;
-            }
-          }
-        }
-        // private helpers
-        function doCreateMine(cellClicked) {
-          // do not put a mine in the first cell clicked
-          return Math.random() < window.board.seed && !(cellClicked.x == i && cellClicked.y == j);
-        }
-        function createMine(i, j) {
-          map[j][i] = 'X';
-          mineCoords.push([i,j]);
-        }
-        function createEmpty(i, j) {
-          map[j][i] = 0;
-        }
-        // create mines main method
-        var mineCoords = [];
-        var map = new Array(height);
-        for (var j = 0; j < height; j++) {
-          map[j] = new Array(width);
-          for (var i = 0; i < width; i++) {
-            doCreateMine(cellClicked) ? createMine(i, j) : createEmpty(i, j);
-          }
-        }
-        // setup board
-        tallyNeighbourMines(map, mineCoords);
-        window.board.mineCount = mineCoords.length;
-        return map;
-      }
-      // setup board
-      window.board.mineMap = mineMap(this.height, this.width, cellClicked);
-    }
-    function createGame(params) {
-      createBoardElements(params.width,params.height);
-      window.board = new Board(params.width, params.height, params.seed);
     }
     </script>
   </body>

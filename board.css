@@ -32,14 +32,22 @@ body {
   padding-top: 3px;
 }
 
+.row__cell.marked, .row__cell.mine, .row__cell.hover {
+  color: black;
+}
+
+.row__cell.marked, .row__cell.mine {
+  font-weight: bold;
+}
+
 .row__cell.hover {
-  background-color: sandybrown;
+  background-color: thistle;
 }
 
 .row__cell.opened {
   background-color: tan;
 }
 
-.row__cell.marked {
-  color: purple;
+.row__cell.mine {
+  background-color: #CD0000;
 }
