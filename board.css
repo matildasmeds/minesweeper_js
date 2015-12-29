@@ -36,7 +36,7 @@ body {
   color: black;
 }
 
-.row__cell.marked, .row__cell.mine {
+.row__cell.marked, .row__cell.mine, .row__cell.hover {
   font-weight: bold;
 }
 
@@ -44,10 +44,14 @@ body {
   background-color: thistle;
 }
 
-.row__cell.opened {
+.row__cell.mine {
+  font-size: 15px;
+}
+
+.row__cell.opened, .row__cell.mine.revealed {
   background-color: tan;
 }
 
-.row__cell.mine {
+.row__cell.mine.exploded {
   background-color: #CD0000;
 }

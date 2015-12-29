@@ -115,6 +115,23 @@
         }
         return ret;
       }
+      Game.prototype.remainingCellsWithMines = function(cell) {
+        var ret = [];
+        console.log('cell: ' + cell.x + ', ' + cell.y);
+        for (var j = 0; j < this.height; j++) {
+          for (var i = 0; i < this.width; i++) {
+            if (cell.y == i && cell.x == j) {
+              // for some reason never reached
+            } else {
+              console.log(i + ', ' + j);
+              var cell = new this.Cell(i, j);
+              if (window.game.isMineCell(cell))
+                ret.push(new this.Cell(i, j));
+            }
+          }
+        }
+        return ret;
+      }
       Game.prototype.markMarked = function(cell) {
         this.markedCellsMap[cell.y][cell.x] = true;
       }
@@ -232,9 +249,19 @@
             if (checkNeighbours(cell)) examineNeighbours(cell);
           }
           function loseGame(cell) {
+            function setMineStyle(elt, modifier) {
+              elt.innerHTML = String.fromCharCode(164);
+              elt.className = 'row__cell ' + modifier;
+            }
+            function revealMines(cell){
+              var cells = window.game.remainingCellsWithMines(cell);
+              for (var i = 0; i < cells.length; i++)
+                setMineStyle(cells[i].elt, 'mine revealed');
+            }
+            revealMines(cell);
             elt = removeListeners(cell);
-            elt.innerHTML = String.fromCharCode(164);
-            elt.className = 'row__cell mine';
+            setMineStyle(elt, 'mine exploded'); // still needed because
+            // remainingCellsWithMines includes the exploded mine
             (function removeRemainingListeners() {
               var cells = window.game.cellsNotOpened();
               for (var i = 0; i < cells.length; i++) {
