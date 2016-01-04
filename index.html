@@ -10,10 +10,8 @@
   </div>
   <br/>
   <div id='board'></div>
+  </body>
   <script>
-//  console.log(String.fromCharCode(8855));
-//  console.log(String.fromCharCode(9786));
-//  console.log(String.fromCharCode(9785));
     // User creates a new game by pressing start buttons
     function createStartButtons() {
       function createButton(text, className, params) {
@@ -26,7 +24,7 @@
         return button;
       }
       var div = document.getElementById('start-buttons');
-      var params = { width: 15, height: 15, seed: 0.1 };
+      var params = { width: 15, height: 15, seed: 0.09 };
       div.appendChild(createButton('Easy', 'easy', params));
       params = { width: 30, height: 20, seed: 0.14 };
       div.appendChild(createButton('Intermediate', 'intermediate', params));
@@ -63,48 +61,48 @@
     // Wrap the Board prototype setup methods in a function?
       Game.prototype.startGame = function(clickedCell) {
         this.createMines(clickedCell);
-      }
+      };
       Game.prototype.gameStarted = function() {
         return this.mineMap.length > 0;
-      }
+      };
       Game.prototype.isInside = function(x,y) {
         return ( 0 <= x && x < this.width && 0 <= y && y < this.height);
-      }
+      };
       Game.prototype.neighbourCoords = function(x,y) {
         var arr = [[x - 1, y], [x + 1, y], [x, y - 1],
           [x, y + 1], [x - 1, y - 1], [x - 1, y + 1],
           [x + 1, y - 1], [x + 1, y + 1]];
-        var ret = []
+        var ret = [];
         for (var i = 0; i < arr.length; i++) {
-          var x = arr[i][0];
-          var y = arr[i][1];
-          if (this.isInside(x, y)) ret.push(arr[i]);
+          var x1 = arr[i][0];
+          var y1 = arr[i][1];
+          if (this.isInside(x1, y1)) ret.push(arr[i]);
         }
         return ret;
-      }
+      };
       Game.prototype.Cell = function(x,y) {
         var query = 'span[data-x="' + x + '"][data-y="' + y + '"]';
         this.elt = document.querySelectorAll(query)[0];
         this.x = x;
         this.y = y;
-      }
+      };
       Game.prototype.neighbourCellsFor = function(cell) {
         var ret = [];
         var neighbours = window.game.neighbourCoords(cell.x, cell.y);
         for (var i = 0; i < neighbours.length; i++) {
           var x = neighbours[i][0];
           var y = neighbours[i][1];
-          var cell = new window.game.Cell(x, y);
-          ret.push(cell);
+          var retrieved_cell = new window.game.Cell(x, y);
+          ret.push(retrieved_cell);
         }
         return ret;
-      }
+      };
       Game.prototype.markOpened = function(cell) {
         this.openedCellsMap[cell.y][cell.x] = true;
-      }
+      };
       Game.prototype.notOpened = function(cell) {
         return !this.openedCellsMap[cell.y][cell.x];
-      }
+      };
       Game.prototype.cellsNotOpened = function() {
         var ret = [];
         for (var j = 0; j < this.height; j++) {
@@ -114,36 +112,32 @@
           }
         }
         return ret;
-      }
+      };
       Game.prototype.remainingCellsWithMines = function(cell) {
         var ret = [];
-        console.log('cell: ' + cell.x + ', ' + cell.y);
         for (var j = 0; j < this.height; j++) {
           for (var i = 0; i < this.width; i++) {
-            if (cell.y == i && cell.x == j) {
-              // for some reason never reached
+            if (cell.y === i && cell.x === j) { // ignore the opened mine
             } else {
-              console.log(i + ', ' + j);
-              var cell = new this.Cell(i, j);
-              if (window.game.isMineCell(cell))
-                ret.push(new this.Cell(i, j));
+              var new_cell = new this.Cell(j, i);
+              if (window.game.isMineCell(new_cell)) ret.push(new_cell);
             }
           }
         }
         return ret;
-      }
+      };
       Game.prototype.markMarked = function(cell) {
         this.markedCellsMap[cell.y][cell.x] = true;
-      }
+      };
       Game.prototype.notMarked = function(cell) {
         return !this.markedCellsMap[cell.y][cell.x];
-      }
+      };
       Game.prototype.valueAt = function(cell) {
         return this.mineMap[cell.y][cell.x];
-      }
+      };
       Game.prototype.isMineCell = function(cell) {
         if (window.game.valueAt(cell) == 'X') return true;
-      }
+      };
       Game.prototype.createMines = function(cellClicked) {
         // private helper
         function mineMap(height, width, cellClicked) {
@@ -178,7 +172,11 @@
           for (var j = 0; j < height; j++) {
             map[j] = new Array(width);
             for (var i = 0; i < width; i++) {
-              doCreateMine(cellClicked) ? createMine(i, j) : createEmpty(i, j);
+              if (doCreateMine(cellClicked)) {
+                createMine(i, j);
+              } else {
+                createEmpty(i, j);
+              }
             }
           }
           // setup board
@@ -188,7 +186,7 @@
         }
         // setup board
         window.game.mineMap = mineMap(this.height, this.width, cellClicked);
-      }
+      };
     }());
     // BoardElements are inserted inside #board div
     // The basic units are rows and cells
@@ -216,14 +214,14 @@
         for (var i = 0; i < width; i++) {
           addCellElementTo(row, i);
         }
-        return row
+        return row;
       }
       function addCellElementTo(row, i) {
         var elt = document.createElement('span');
         row.appendChild(elt);
         elt.setAttribute('class', 'row__cell');
         elt.setAttribute('data-x', i);
-        elt.setAttribute('data-y', elt.parentNode.getAttribute('data-y'))
+        elt.setAttribute('data-y', elt.parentNode.getAttribute('data-y'));
         setEventHandlersTo(elt);
       }
       function setEventHandlersTo(elt) {
@@ -260,8 +258,7 @@
             }
             revealMines(cell);
             elt = removeListeners(cell);
-            setMineStyle(elt, 'mine exploded'); // still needed because
-            // remainingCellsWithMines includes the exploded mine
+            setMineStyle(elt, 'mine exploded');
             (function removeRemainingListeners() {
               var cells = window.game.cellsNotOpened();
               for (var i = 0; i < cells.length; i++) {
@@ -270,15 +267,15 @@
             }());
           }
           function checkNeighbours(cell) {
-            return window.game.valueAt(cell) == 0;
+            return window.game.valueAt(cell) === 0;
           }
           function examineNeighbours(cell) {
             var arr = window.game.neighbourCellsFor(cell);
             for (var i = 0; i < arr.length; i++) {
-              var cell = arr[i];
-              if (!canBeOpened(cell)) continue;
-              openThis(cell);
-              if (checkNeighbours(cell)) examineNeighbours(cell);
+              var curr = arr[i];
+              if (!canBeOpened(curr)) continue;
+              openThis(curr);
+              if (checkNeighbours(curr)) examineNeighbours(curr);
             }
             function canBeOpened(cell) {
               return (window.game.notOpened(cell) && ! window.game.isMineCell(cell) && window.game.notMarked(cell));
@@ -287,9 +284,10 @@
           function openThis(cell) {
             (function setOpenedStyle() {
               var val = window.game.valueAt(cell);
+              console.log(cell);
               var new_elt = cell.elt.cloneNode(true);
-              new_elt.className = 'row__cell opened'
-              new_elt.innerHTML = ( val == 0 ? '' : val);
+              new_elt.className = 'row__cell opened';
+              new_elt.innerHTML = ( val === 0 ? '' : val);
               cell.elt.parentNode.replaceChild(new_elt, cell.elt);
             }());
             window.game.markOpened(cell);
@@ -349,14 +347,13 @@
           var evt = new Object({keyCode:93});
           stopEvent(e);
         function stopEvent(event){
-          if(event.preventDefault != undefined)
+          if(event.preventDefault !== undefined)
             event.preventDefault();
-          if(event.stopPropagation != undefined)
+          if(event.stopPropagation !== undefined)
             event.stopPropagation();
           }
-        }
+        };
       }());
     }
-    </script>
-  </body>
+  </script>
 </html>
