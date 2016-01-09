@@ -154,7 +154,7 @@ function Game(width, height, seed) {
         }());
         this.markOpened(cell);
         if (this.safeCellsCount === 0) {
-            this.gameCompleted();
+            this.gameCompleted(cell);
         }
     };
     this.setMineStyle = function (elt, modifier) {
@@ -261,8 +261,9 @@ function Game(width, height, seed) {
         this.showGameStatus('Playing...');
 
     };
-    this.gameCompleted = function () {
+    this.gameCompleted = function (cell) {
         this.showGameStatus('You Win!');
+        this.revealMines(cell);
         this.removeRemainingListeners();
     };
     this.gameOver = function (cell) {
@@ -440,11 +441,11 @@ function createStartButtons() {
     }
     var div = document.getElementById('start-buttons'),
         params;
-    params = { width: 15, height: 15, seed: 0.09 };
+    params = { width: 15, height: 15, seed: 0.083 };
     div.appendChild(createButton('Easy', 'easy', params));
-    params = { width: 30, height: 20, seed: 0.14 };
+    params = { width: 30, height: 20, seed: 0.134 };
     div.appendChild(createButton('Intermediate', 'intermediate', params));
-    params = { width: 54, height: 30, seed: 0.19};
+    params = { width: 54, height: 30, seed: 0.15};
     div.appendChild(createButton('Hard', 'hard', params));
 }
 
