@@ -2,9 +2,9 @@
 /*jslint node: true */
 // Start buttons call createGame at onClick event
 'use strict';
-// Game, references through window.game holds mine map and game state
+var MINESWEEPER; // minemap, game state, cell manipulation
 function Game(width, height, seed) {
-    // methods to set up game data
+    // private helper
     function booleanCellsMap(width, height) {
         var map = [],
             x,
@@ -18,11 +18,12 @@ function Game(width, height, seed) {
         return map;
     }
 
-//    this.seed = seed;
     var mineMap = [],
         openedCellsMap = booleanCellsMap(width, height),
         markedCellsMap = booleanCellsMap(width, height);
+
     this.mineCount = null;
+    this.safeCellsCount = null;
 
     // cell value queries
     this.valueAt = function (cell) {
@@ -43,37 +44,7 @@ function Game(width, height, seed) {
         return this.valueAt(cell) === 'X' ? true : false;
     };
     this.canBeOpened = function (cell) {
-        if (cell === 'undefined') { return; }
         return (this.notOpened(cell) && !this.isMineCell(cell) && this.notMarked(cell));
-    };
-
-    // modify cell
-    this.markOpened = function (cell) {
-        openedCellsMap[cell.x][cell.y] = true;
-    };
-    this.markMarked = function (cell) {
-        markedCellsMap[cell.x][cell.y] = true;
-    };
-    this.openThis = function (cell) {
-        if (cell === 'undefined') { return; }
-        (function setOpenedStyle() {
-            var val = window.game.valueAt(cell),
-                new_elt = cell.elt.cloneNode(true);
-            new_elt.className = 'row__cell opened';
-            new_elt.innerHTML = (val === 0 ? '' : val);
-            cell.elt.parentNode.replaceChild(new_elt, cell.elt);
-        }());
-        this.markOpened(cell);
-    };
-    this.removeListeners = function (cell) {
-        // this method is quirky, especially as it 1) has a return value,
-        // and 2) it returns an element not a cell
-        // apparently replacing child is a good way to remove listeners
-        // that's the rationale for the quirkiness
-        if (cell === 'undefined') { return; }
-        var new_elt = cell.elt.cloneNode(true);
-        cell.elt.parentNode.replaceChild(new_elt, cell.elt);
-        return new_elt;
     };
 
     // retrieve cell
@@ -84,7 +55,6 @@ function Game(width, height, seed) {
         this.y = y;
     };
     this.getCellFrom = function (evt) {
-        if (evt === 'undefined') { return; }
         var x = parseInt(evt.target.getAttribute('data-x'), 10),
             y = parseInt(evt.target.getAttribute('data-y'), 10);
         return new this.Cell(x, y);
@@ -141,7 +111,6 @@ function Game(width, height, seed) {
             x,
             y,
             new_cell;
-        console.log(cell);
         for (x = 0; x < width; x += 1) {
             for (y = 0; y < height; y += 1) {
                 // ignore the opened mine
@@ -154,6 +123,56 @@ function Game(width, height, seed) {
             }
         }
         return ret;
+    };
+
+    // modify cell
+    this.markOpened = function (cell) {
+        openedCellsMap[cell.x][cell.y] = true;
+        this.safeCellsCount -= 1;
+    };
+    this.markMarked = function (cell) {
+        markedCellsMap[cell.x][cell.y] = true;
+    };
+    this.removeListeners = function (cell) {
+        // this method is quirky, especially as it 1) has a return value,
+        // and 2) it returns an element not a cell
+        // apparently replacing child is a good way to remove listeners
+        // that's the rationale for the quirkiness
+        var new_elt = cell.elt.cloneNode(true);
+        cell.elt.parentNode.replaceChild(new_elt, cell.elt);
+        return new_elt;
+    };
+    this.openThis = function (cell) {
+        var val = this.valueAt(cell),
+            new_elt = this.removeListeners(cell);
+        (function setOpenedCellStyle() {
+            new_elt.className = 'row__cell opened';
+            new_elt.innerHTML = (val === 0 ? '' : val);
+        }());
+        this.markOpened(cell);
+        if (this.safeCellsCount === 0) {
+            this.gameCompleted();
+        }
+    };
+    this.setMineStyle = function (elt, modifier) {
+        elt.innerHTML = String.fromCharCode(164);
+        elt.className = 'row__cell ' + modifier;
+    };
+
+    // modify multiple cells
+    this.removeRemainingListeners = function () {
+        var cells = this.cellsNotOpened(),
+            i;
+        for (i = 0; i < cells.length; i += 1) {
+            this.removeListeners(cells[i]);
+        }
+    };
+    this.revealMines = function (cell) {
+        var cells = this.remainingCellsWithMines(cell),
+            i;
+        for (i = 0; i < cells.length; i += 1) {
+            this.setMineStyle(cells[i].elt, 'mine revealed');
+        }
     };
 
     // game creation and start methods
@@ -183,9 +202,11 @@ function Game(width, height, seed) {
             function createMine(map, x, y, mineCoords) {
                 map[x][y] = 'X';
                 mineCoords.push([x, y]);
+                game.mineCount += 1;
             }
             function createEmpty(map, x, y) {
                 map[x][y] = 0;
+                game.safeCellsCount += 1;
             }
             // create mines main method
             var mineCoords = [],
@@ -204,7 +225,6 @@ function Game(width, height, seed) {
             }
             // setup board
             tallyNeighbourMines(map, mineCoords, game);
-            game.mineCount = mineCoords.length;
             return map;
         }
         // setup board
@@ -216,176 +236,170 @@ function Game(width, height, seed) {
     };
     this.startGame = function (clickedCell) {
         this.createMines(clickedCell);
+        this.showMineCount(this.mineCount);
+        this.showGameStatus('Playing...');
+
     };
-
-
+    this.gameCompleted = function () {
+        this.showGameStatus('You Win!');
+        this.removeRemainingListeners();
+    };
+    this.gameOver = function (cell) {
+        this.showGameStatus('Game Over!');
+        this.revealMines(cell);
+        this.setMineStyle(cell.elt, 'mine exploded');
+        this.removeRemainingListeners();
+    };
+    // display methods
+    this.showGameStatus = function (status) {
+        var div = document.getElementById('game-status');
+        div.innerHTML = status;
+    };
+    this.showMineCount = function (count) {
+        var div = document.getElementById('mine-count');
+        div.innerHTML = count;
+    };
+    this.clearDisplays = function () {
+        MINESWEEPER.showGameStatus('&nbsp;');
+        MINESWEEPER.showMineCount('&nbsp');
+    };
 }
-
-// BoardElements are inserted inside #board div
-// The basic units are rows and cells
-// Cells have listeners mouseover, mousedown, and mouseout
-// The game logic is described here and handlers attached to listeners
-// Starting the game, ending the game, evaluating clicks happen here
-function createBoardElements(width, height) {
-    var board = document.getElementById('board');
-    // clear previous board, if present
-    (function clear() {
-        while (board.firstChild) {
-            board.removeChild(board.firstChild);
-        }
-    }());
-    function setEventHandlersTo(elt) {
-
-        function executeClickOpen(cell) {
-
-            function loseGame(cell) {
-
-                function setMineStyle(elt, modifier) {
-                    elt.innerHTML = String.fromCharCode(164);
-                    elt.className = 'row__cell ' + modifier;
-                }
-
-                function revealMines(cell) {
-                    var cells = window.game.remainingCellsWithMines(cell),
-                        i;
-                    for (i = 0; i < cells.length; i += 1) {
-                        setMineStyle(cells[i].elt, 'mine revealed');
-                    }
-                }
-
-                revealMines(cell);
-                elt = window.game.removeListeners(cell);
-                setMineStyle(elt, 'mine exploded');
-                (function removeRemainingListeners() {
-                    var cells = window.game.cellsNotOpened(),
-                        i;
-                    for (i = 0; i < cells.length; i += 1) {
-                        window.game.removeListeners(cells[i]);
-                    }
-                }());
-            }
-
-            function checkNeighbours(cell) {
-
-                return window.game.valueAt(cell) === 0;
-            }
-
-            function examineNeighbours(cell) {
-                var arr = window.game.neighbourCellsFor(cell),
-                    i,
-                    curr;
-                for (i = 0; i < arr.length; i += 1) {
-                    curr = arr[i];
-                    if (window.game.canBeOpened(curr)) {
-                        window.game.openThis(curr);
-                        if (checkNeighbours(curr)) {
-                            examineNeighbours(curr);
-                        }
-                    }
-                }
-            }
-
-            if (window.game.isMineCell(cell)) {
-                loseGame(cell);
-            } else {
-                window.game.openThis(cell);
-                if (checkNeighbours(cell)) {
-                    examineNeighbours(cell);
-                }
-            }
-        }
-
-        function clickOpen(cell) {
-            if (!window.game.gameStarted()) { window.game.startGame(cell); }
-            executeClickOpen(cell);
-        }
-
-        function unMark(evt) {
-            if (evt.which === 1) { return; }
-            var cell = window.game.getCellFrom(evt);
-            elt = window.game.removeListeners(cell);
-            addListeners(elt); // how to refactor this to pass jslint?
-        }
-
-        function markThis(cell) {
-            window.game.markMarked(cell);
-            elt = window.game.removeListeners(cell);
-            elt.addEventListener('mousedown', unMark);
-            elt.className = 'row__cell marked';
-            elt.innerHTML = 'X';
-        }
-
-        function clickNotMarked(evt) {
-            var cell = window.game.getCellFrom(evt);
-            if (evt.which === 1) { // leftclick
-                clickOpen(cell);
-            } else { // middleclick & rightclick
-                markThis(cell);
-            }
-        }
-
-        // Event handler definitions
-        function mouseOverHandler(evt) {
-            (function setHoverStyle() {
-                elt = evt.target;
-                elt.innerHTML = '?';
-                elt.className += ' hover';
-            }());
-        }
-        function mouseOutHandler(evt) {
-            (function resetHoverStyle() {
-                elt = evt.target;
-                elt.innerHTML = '';
-                elt.className = 'row__cell';
-            }());
-        }
-        function addListeners(elt) {
-            elt.addEventListener('mousedown', clickNotMarked);
-            elt.addEventListener('mouseover', mouseOverHandler);
-            elt.addEventListener('mouseout', mouseOutHandler);
-        }
-
-        addListeners(elt);
-    }
-
-    (function disableContextMenu() { // from SO, enables right click features
-        board.oncontextmenu = function (evt) {
-            (function stopEvent() {
-                if (evt.preventDefault !== undefined) { evt.preventDefault(); }
-                if (evt.stopPropagation !== undefined) { evt.stopPropagation(); }
-            }());
-        };
-    }());
-    function addCellElementTo(row, i) {
-        var elt = document.createElement('span');
-        row.appendChild(elt);
-        elt.setAttribute('class', 'row__cell');
-        elt.setAttribute('data-x', i);
-        elt.setAttribute('data-y', elt.parentNode.getAttribute('data-y'));
-        setEventHandlersTo(elt);
-    }
-    function createRowElement(j) {
-        var row = document.createElement('div'), i;
-        row.setAttribute('class', 'row');
-        row.setAttribute('data-y', j);
-        for (i = 0; i < width; i += 1) {
-            addCellElementTo(row, i);
-        }
-        return row;
-    }
-    function createRows(board) {
-        var j;
-        for (j = 0; j < height; j += 1) {
-            board.appendChild(createRowElement(j));
-        }
-    }
-    createRows(board);
-}
-
 
 // Will be bound to start buttons
 function createGame(params) {
-    window.game = new Game(params.width, params.height, params.seed);
+    MINESWEEPER = new Game(params.width, params.height, params.seed);
+    // BoardElements are inserted inside #board div
+    // The basic units are rows and cells
+    // Cells have listeners mouseover, mousedown, and mouseout
+    // The game logic is described here and handlers attached to listeners
+    // Starting the game, ending the game, evaluating clicks happen here
+    function createBoardElements(width, height) {
+        var board = document.getElementById('board');
+        // clear previous board, if present
+        (function clear() {
+            MINESWEEPER.clearDisplays();
+            while (board.firstChild) {
+                board.removeChild(board.firstChild);
+            }
+        }());
+        function setEventHandlersTo(elt) {
+
+            function executeClickOpen(cell) {
+
+                function checkNeighbours(cell) {
+                    return MINESWEEPER.valueAt(cell) === 0;
+                }
+
+                function examineNeighbours(cell) {
+                    var arr = MINESWEEPER.neighbourCellsFor(cell),
+                        i,
+                        curr;
+                    for (i = 0; i < arr.length; i += 1) {
+                        curr = arr[i];
+                        if (MINESWEEPER.canBeOpened(curr)) {
+                            MINESWEEPER.openThis(curr);
+                            if (checkNeighbours(curr)) {
+                                examineNeighbours(curr);
+                            }
+                        }
+                    }
+                }
+
+                if (MINESWEEPER.isMineCell(cell)) {
+                    MINESWEEPER.gameOver(cell);
+                } else {
+                    MINESWEEPER.openThis(cell);
+                    if (checkNeighbours(cell)) {
+                        examineNeighbours(cell);
+                    }
+                }
+            }
+
+            function clickOpen(cell) {
+                if (!MINESWEEPER.gameStarted()) { MINESWEEPER.startGame(cell); }
+                executeClickOpen(cell);
+            }
+
+            function unMark(evt) {
+                if (evt.which === 1) { return; }
+                var cell = MINESWEEPER.getCellFrom(evt);
+                elt = MINESWEEPER.removeListeners(cell);
+                addDefaultListeners(elt); // how to refactor this to pass jslint?
+            }
+
+            function markThis(cell) {
+                MINESWEEPER.markMarked(cell);
+                elt = MINESWEEPER.removeListeners(cell);
+                elt.addEventListener('mousedown', unMark);
+                elt.className = 'row__cell marked';
+                elt.innerHTML = 'X';
+            }
+
+            function addDefaultListeners(elt) {
+                function clickNotMarked(evt) {
+                    var cell = MINESWEEPER.getCellFrom(evt);
+                    if (evt.which === 1) { // leftclick
+                        clickOpen(cell);
+                    } else { // middleclick & rightclick
+                        markThis(cell);
+                    }
+                }
+                function mouseOverHandler(evt) {
+                    (function setHoverStyle() {
+                        elt = evt.target;
+                        elt.innerHTML = '?';
+                        elt.className += ' hover';
+                    }());
+                }
+                function mouseOutHandler(evt) {
+                    (function resetHoverStyle() {
+                        elt = evt.target;
+                        elt.innerHTML = '';
+                        elt.className = 'row__cell';
+                    }());
+                }
+                elt.addEventListener('mousedown', clickNotMarked);
+                elt.addEventListener('mouseover', mouseOverHandler);
+                elt.addEventListener('mouseout', mouseOutHandler);
+            }
+
+            addDefaultListeners(elt);
+
+        }
+
+        (function disableContextMenu() { // from SO, enables right click features
+            board.oncontextmenu = function (evt) {
+                (function stopEvent() {
+                    if (evt.preventDefault !== undefined) { evt.preventDefault(); }
+                    if (evt.stopPropagation !== undefined) { evt.stopPropagation(); }
+                }());
+            };
+        }());
+        function addCellElementTo(row, i) {
+            var elt = document.createElement('span');
+            row.appendChild(elt);
+            elt.setAttribute('class', 'row__cell');
+            elt.setAttribute('data-x', i);
+            elt.setAttribute('data-y', elt.parentNode.getAttribute('data-y'));
+            setEventHandlersTo(elt);
+        }
+        function createRowElement(j) {
+            var row = document.createElement('div'), i;
+            row.setAttribute('class', 'row');
+            row.setAttribute('data-y', j);
+            for (i = 0; i < width; i += 1) {
+                addCellElementTo(row, i);
+            }
+            return row;
+        }
+        function createRows(board) {
+            var j;
+            for (j = 0; j < height; j += 1) {
+                board.appendChild(createRowElement(j));
+            }
+        }
+        createRows(board);
+    }
     createBoardElements(params.width, params.height);
 }
 
@@ -402,7 +416,7 @@ function createStartButtons() {
     }
     var div = document.getElementById('start-buttons'),
         params;
-    params = { width: 2, height: 4, seed: 1 };
+    params = { width: 2, height: 4, seed: 0.09 };
     div.appendChild(createButton('Test1', 'test1', params));
     params = { width: 4, height: 2, seed: 1 };
     div.appendChild(createButton('Test2', 'test2', params));
