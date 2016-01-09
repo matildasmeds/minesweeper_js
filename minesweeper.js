@@ -155,7 +155,6 @@ function Game(width, height, seed) {
         }
     };
     this.setMineStyle = function (elt, modifier) {
-        elt.innerHTML = String.fromCharCode(164);
         elt.className = 'row__cell ' + modifier;
     };
 
@@ -171,7 +170,12 @@ function Game(width, height, seed) {
         var cells = this.remainingCellsWithMines(cell),
             i;
         for (i = 0; i < cells.length; i += 1) {
-            this.setMineStyle(cells[i].elt, 'mine revealed');
+            if (this.notMarked(cells[i])) {
+                cells[i].elt.innerHTML = String.fromCharCode(164);
+                this.setMineStyle(cells[i].elt, 'mine revealed');
+            } else {
+                this.setMineStyle(cells[i].elt, 'mine marked');
+            }
         }
     };
 
@@ -248,6 +252,7 @@ function Game(width, height, seed) {
         this.showGameStatus('Game Over!');
         this.revealMines(cell);
         this.setMineStyle(cell.elt, 'mine exploded');
+        cell.elt.innerHTML = String.fromCharCode(164);
         this.removeRemainingListeners();
     };
     // display methods
@@ -416,10 +421,6 @@ function createStartButtons() {
     }
     var div = document.getElementById('start-buttons'),
         params;
-    params = { width: 2, height: 4, seed: 0.09 };
-    div.appendChild(createButton('Test1', 'test1', params));
-    params = { width: 4, height: 2, seed: 1 };
-    div.appendChild(createButton('Test2', 'test2', params));
     params = { width: 15, height: 15, seed: 0.09 };
     div.appendChild(createButton('Easy', 'easy', params));
     params = { width: 30, height: 20, seed: 0.14 };

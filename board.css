@@ -49,6 +49,10 @@ body {
   background-color: tan;
 }
 
+.row__cell.mine.marked {
+    background-color: palegreen;
+}
+
 .row__cell.mine.exploded {
   background-color: #CD0000;
 }
