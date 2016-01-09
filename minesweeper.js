@@ -6,12 +6,12 @@
 function Game(width, height, seed) {
     function booleanCellsMap(width, height) {
         var map = [],
-            j,
-            i;
-        for (j = 0; j < height; j += 1) {
-            map[j] = [];
-            for (i = 0; i < width; i += 1) {
-                map[j][i] = false;
+            x,
+            y;
+        for (x = 0; x < width; x += 1) {
+            map[x] = [];
+            for (y = 0; y < height; y += 1) {
+                map[x][y] = false;
             }
         }
         return map;
@@ -74,19 +74,19 @@ function Game(width, height, seed) {
         return ret;
     };
     Game.prototype.markOpened = function (cell) {
-        this.openedCellsMap[cell.y][cell.x] = true;
+        this.openedCellsMap[cell.x][cell.y] = true;
     };
     Game.prototype.notOpened = function (cell) {
-        return !this.openedCellsMap[cell.y][cell.x];
+        return !this.openedCellsMap[cell.x][cell.y];
     };
     Game.prototype.cellsNotOpened = function () {
         var ret = [],
-            j,
-            i;
-        for (j = 0; j < this.height; j += 1) {
-            for (i = 0; i < this.width; i += 1) {
-                if (!this.openedCellsMap[j][i]) {
-                    ret.push(new this.Cell(i, j));
+            x,
+            y;
+        for (x = 0; x < this.width; x += 1) {
+            for (y = 0; y < this.height; y += 1) {
+                if (!this.openedCellsMap[x][y]) {
+                    ret.push(new this.Cell(x, y));
                 }
             }
         }
@@ -94,15 +94,15 @@ function Game(width, height, seed) {
     };
     Game.prototype.remainingCellsWithMines = function (cell) {
         var ret = [],
-            j,
-            i,
+            x,
+            y,
             new_cell;
         console.log(cell);
-        for (j = 0; j < this.height; j += 1) {
-            for (i = 0; i < this.width; i += 1) {
+        for (x = 0; x < this.width; x += 1) {
+            for (y = 0; y < this.height; y += 1) {
                 // ignore the opened mine
-                if (!(cell.y === j && cell.x === i)) {
-                    new_cell = new this.Cell(i, j);
+                if (!(cell.x === x && cell.y === y)) {
+                    new_cell = new this.Cell(x, y);
                     if (window.game.isMineCell(new_cell)) {
                         ret.push(new_cell);
                     }
@@ -112,13 +112,13 @@ function Game(width, height, seed) {
         return ret;
     };
     Game.prototype.markMarked = function (cell) {
-        this.markedCellsMap[cell.y][cell.x] = true;
+        this.markedCellsMap[cell.x][cell.y] = true;
     };
     Game.prototype.notMarked = function (cell) {
-        return !this.markedCellsMap[cell.y][cell.x];
+        return !this.markedCellsMap[cell.x][cell.y];
     };
     Game.prototype.valueAt = function (cell) {
-        return this.mineMap[cell.y][cell.x];
+        return this.mineMap[cell.x][cell.y];
     };
     Game.prototype.isMineCell = function (cell) {
         return window.game.valueAt(cell) === 'X' ? true : false;
@@ -128,15 +128,15 @@ function Game(width, height, seed) {
         function mineMap(height, width, cellClicked) {
           // private helper
             function tallyNeighbourMines(map, mineCoords) {
-                var p, x, y, coords, q, i, j;
+                var p, x0, y0, coords, q, x, y;
                 for (p = 0; p < mineCoords.length; p += 1) {
-                    x = mineCoords[p][0];
-                    y = mineCoords[p][1];
-                    coords = window.game.neighbourCoords(x, y);
+                    x0 = mineCoords[p][0];
+                    y0 = mineCoords[p][1];
+                    coords = window.game.neighbourCoords(x0, y0);
                     for (q = 0; q < coords.length; q += 1) {
-                        i = coords[q][0];
-                        j = coords[q][1];
-                        if (window.game.isInside(i, j) && (map[j][i] !== 'X')) { map[j][i] += 1; }
+                        x = coords[q][0];
+                        y = coords[q][1];
+                        if (window.game.isInside(x, y) && (map[x][y] !== 'X')) { map[x][y] += 1; }
                     }
                 }
             }
@@ -145,21 +145,21 @@ function Game(width, height, seed) {
                 // do not put a mine in the first cell clicked
                 return Math.random() < window.game.seed && !(cellClicked.x === x && cellClicked.y === y);
             }
-            function createMine(map, i, j, mineCoords) {
-                map[j][i] = 'X';
-                mineCoords.push([i, j]);
+            function createMine(map, x, y, mineCoords) {
+                map[x][y] = 'X';
+                mineCoords.push([x, y]);
             }
-            function createEmpty(map, i, j) {
-                map[j][i] = 0;
+            function createEmpty(map, x, y) {
+                map[x][y] = 0;
             }
             // create mines main method
             var mineCoords = [],
                 map = [],
-                y,
-                x;
-            for (y = 0; y < height; y += 1) {
-                map[y] = [];
-                for (x = 0; x < width; x += 1) {
+                x,
+                y;
+            for (x = 0; x < width; x += 1) {
+                map[x] = [];
+                for (y = 0; y < height; y += 1) {
                     if (doCreateMine(x, y, cellClicked)) {
                         createMine(map, x, y, mineCoords);
                     } else {
