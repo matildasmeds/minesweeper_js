@@ -1,58 +1,73 @@
 body {
-  font-family: 'Lucida Console', 'Lucida Sans Typewriter', monospace;
-  font-size: 13px;
-  background-color: tan;
+    font-family: 'Lucida Console', 'Lucida Sans Typewriter', monospace;
+    font-size: 13px;
+    background-color: gray;
 }
 
 .row {
-  padding: 0;
-  margin: 0;
-  height: 20px;
-  width: 100%;
-  float: left;
-  text-align: center;
+    padding: 0;
+    margin: 0;
+    height: 20px;
+    width: 100%;
+    float: left;
+    text-align: center;
 }
 
 #start-buttons button {
-  color: purple;
+    color: purple;
+}
+
+ div {
+    margin-bottom: 3px;
 }
 
 .row__cell {
-  width: 20px;
-  height: 20px;
-  float: left;
-  border: solid 1px wheat;
-  color: white;
-  background-color: white;
-  margin-left: -1px;
-  margin-bottom: -1px;
-  padding-top: 3px;
+    width: 20px;
+    height: 20px;
+    float: left;
+    border: solid 1px gray;
+    color: white;
+    background-color: white;
+    margin-left: -1px;
+    margin-bottom: -1px;
+    padding-top: 3px;
 }
 
 .row__cell.marked, .row__cell.mine, .row__cell.hover {
-  color: black;
+    color: black;
 }
 
 .row__cell.marked, .row__cell.mine, .row__cell.hover {
-  font-weight: bold;
+    font-weight: bold;
 }
 
 .row__cell.hover {
-  background-color: thistle;
+    background-color: thistle;
 }
 
 .row__cell.mine {
-  font-size: 15px;
+    font-size: 15px;
 }
 
-.row__cell.opened, .row__cell.mine.revealed {
-  background-color: tan;
+.row__cell.opened {
+    background-color: darkgray;
 }
 
-.row__cell.mine.marked {
+.row__cell.mine.revealed {
+    background-color: thistle;
+    color: purple;
+}
+
+.row__cell.mine.correct {
     background-color: palegreen;
+    color: darkgreen;
+}
+
+.row__cell.mine.incorrect {
+    background-color: yellow;
+    color: orange;
 }
 
 .row__cell.mine.exploded {
-  background-color: #CD0000;
+    background-color: #CD0000;
 }

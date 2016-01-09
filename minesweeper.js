@@ -133,6 +133,9 @@ function Game(width, height, seed) {
     this.markMarked = function (cell) {
         markedCellsMap[cell.x][cell.y] = true;
     };
+    this.unMark = function (cell) {
+        markedCellsMap[cell.x][cell.y] = false;
+    };
     this.removeListeners = function (cell) {
         // this method is quirky, especially as it 1) has a return value,
         // and 2) it returns an element not a cell
@@ -168,13 +171,27 @@ function Game(width, height, seed) {
     };
     this.revealMines = function (cell) {
         var cells = this.remainingCellsWithMines(cell),
-            i;
+            i,
+            curr;
         for (i = 0; i < cells.length; i += 1) {
-            if (this.notMarked(cells[i])) {
-                cells[i].elt.innerHTML = String.fromCharCode(164);
-                this.setMineStyle(cells[i].elt, 'mine revealed');
+            curr = cells[i];
+            if (this.notMarked(curr)) {
+                curr.elt.innerHTML = String.fromCharCode(164);
+                this.setMineStyle(curr.elt, 'mine revealed');
             } else {
-                this.setMineStyle(cells[i].elt, 'mine marked');
+                this.setMineStyle(curr.elt, 'mine correct');
+                markedCellsMap[curr.x][curr.y] = false;
+            }
+        }
+    };
+    this.revealIncorrectMines = function () {
+        var x, y, cell;
+        for (x = 0; x < width; x += 1) {
+            for (y = 0; y < height; y += 1) {
+                if (markedCellsMap[x][y]) {
+                    cell = new this.Cell(x, y);
+                    this.setMineStyle(cell.elt, 'mine incorrect');
+                }
             }
         }
     };
@@ -253,9 +270,11 @@ function Game(width, height, seed) {
         this.revealMines(cell);
         this.setMineStyle(cell.elt, 'mine exploded');
         cell.elt.innerHTML = String.fromCharCode(164);
+        this.revealIncorrectMines();
         this.removeRemainingListeners();
     };
-    // display methods
+
+    // game information display methods
     this.showGameStatus = function (status) {
         var div = document.getElementById('game-status');
         div.innerHTML = status;
@@ -326,8 +345,8 @@ function createGame(params) {
             }
 
             function unMark(evt) {
-                if (evt.which === 1) { return; }
                 var cell = MINESWEEPER.getCellFrom(evt);
+                MINESWEEPER.unMark(cell);
                 elt = MINESWEEPER.removeListeners(cell);
                 addDefaultListeners(elt); // how to refactor this to pass jslint?
             }
