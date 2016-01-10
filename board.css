@@ -13,12 +13,13 @@ body {
     text-align: center;
 }
 
-#start-buttons button {
-    color: purple;
+.text {
+    margin-top: 5px;
+    margin-bottom: 5px;
 }
 
- div {
-    margin-bottom: 3px;
+#start-buttons button {
+    color: purple;
 }
 
 .row__cell {

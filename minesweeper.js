@@ -299,7 +299,7 @@ function createGame(params) {
     // The game logic is described here and handlers attached to listeners
     // Starting the game, ending the game, evaluating clicks happen here
     function createBoardElements(width, height) {
-        var board = document.getElementById('board');
+        var board = document.getElementById('minesweeper');
         // clear previous board, if present
         (function clear() {
             MINESWEEPER.clearDisplays();
