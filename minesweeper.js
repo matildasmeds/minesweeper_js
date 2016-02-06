@@ -2,66 +2,203 @@
 /*jslint node: true */
 // Start buttons call createGame at onClick event
 'use strict';
-var MINESWEEPER; // minemap, game state, cell manipulation
-function Game(width, height, seed) {
-    // private helper
-    function booleanCellsMap(width, height) {
+
+// Game contains all game logic, knowledge of game parameters, status,
+// handler methods, cell and map query and modification methods
+function game(width, height, seed) {
+    game.dimensions = {width: width, height: height};
+    game.seed = seed;
+    game.maps = {
+        mines: [],
+        openedCells: game.init.booleanMap(width, height, false),
+        markedCells: game.init.booleanMap(width, height, false)
+    };
+}
+
+game.init = {
+    mineMap: function (cellClicked) {
+        // Returns minemap with minecounts
+        // Sets game.status.mineCount, usage: display mine count to user
+        // Initializes game.status.unopenedSafeCellsCount, usage: when reached
+        // zero, game is one, i.e. all safe cells have been opened
+        var map = [],
+            mineCoords = [],
+            height = game.dimensions.height,
+            width = game.dimensions.width,
+            totalCells = height * width,
+            x,
+            y;
+            for (x = 0; x < width; x += 1) {
+                map[x] = [];
+                for (y = 0; y < height; y += 1) {
+                    if (game.init.shouldAddMine(x, y, cellClicked)) {
+                        game.init.addMine(map, x, y, mineCoords);
+                    } else {
+                        game.init.addSafe(map, x, y);
+                    }
+                }
+            }
+        game.init.addMineCountsToMap(map, mineCoords);
+        game.status.mineCount = mineCoords.length;
+        game.status.unopenedSafeCellsCount = totalCells - game.status.mineCount;
+        return map;
+    },
+    shouldAddMine: function (x, y, cellClicked) {
+        // do not put a mine in the first cell clicked
+        return Math.random() < game.seed && !(cellClicked.x === x && cellClicked.y === y);
+    },
+    addMine: function (map, x, y, mineCoords) {
+        map[x][y] = 'X';
+        mineCoords.push([x, y]);
+    },
+    addSafe: function (map, x, y) {
+        map[x][y] = 0;
+    },
+    addMineCountsToMap: function(map, mineCoords) {
+        var p, x0, y0, coords, q, x, y;
+        for (p = 0; p < mineCoords.length; p += 1) {
+            x0 = mineCoords[p][0];
+            y0 = mineCoords[p][1];
+            coords = game.coords.getNeighbours(x0, y0);
+            for (q = 0; q < coords.length; q += 1) {
+                x = coords[q][0];
+                y = coords[q][1];
+                if (game.coords.isInside(x, y) && (map[x][y] !== 'X'))
+                    { map[x][y] += 1; }
+            }
+        }
+    },
+    booleanMap: function(width, height, bool) {
         var map = [],
             x,
             y;
         for (x = 0; x < width; x += 1) {
             map[x] = [];
             for (y = 0; y < height; y += 1) {
-                map[x][y] = false;
+                map[x][y] = bool;
             }
         }
         return map;
     }
+};
 
-    var mineMap = [],
-        openedCellsMap = booleanCellsMap(width, height),
-        markedCellsMap = booleanCellsMap(width, height);
+game.status = {
+    isStarted: function () {
+        return game.maps.mines.length > 0;
+    },
+    showGameStatus: function (status) {
+        var div = document.getElementById('game-status');
+        div.innerHTML = status;
+    },
+    showMineCount: function (count) {
+        var div = document.getElementById('mine-count');
+        div.innerHTML = count;
+    },
+    clearDisplays: function () {
+        game.status.showGameStatus('&nbsp;');
+        game.status.showMineCount('&nbsp');
+    }
+};
 
-    this.mineCount = null;
-    this.safeCellsCount = null;
+game.statusChanges = {
+    start: function (clickedCell) {
+        game.maps.mines = game.init.mineMap(clickedCell);
+        game.status.showMineCount(game.status.mineCount);
+        game.status.showGameStatus('Playing...');
+    },
+    win: function (cell) {
+        game.status.showGameStatus('You Win!');
+        game.cells.showMines(cell);
+        game.cells.removeListeners();
+    },
+    lose: function (cell) {
+        game.status.showGameStatus('Game Over!');
+        game.cells.showMines(cell);
+        cell.modify.setStyle('mine exploded');
+        cell.elt.innerHTML = String.fromCharCode(164);
+        game.cells.showIncorrectMines();
+        game.cells.removeListeners();
+    }
+};
 
-    // cell value queries
-    this.valueAt = function (cell) {
-        return mineMap[cell.x][cell.y];
+game.Cell = function (x, y) {
+    var select = 'span[data-x="' + x + '"][data-y="' + y + '"]';
+    this.elt = document.querySelectorAll(select)[0];
+    this.x = x;
+    this.y = y;
+
+    this.query = {
+        value: function () {
+            return game.maps.mines[this.x][this.y];
+        },
+        notOpened: function () {
+            return !game.maps.openedCells[this.x][this.y];
+        },
+        isMarked: function () {
+            return game.maps.markedCells[this.x][this.y];
+        },
+        isMineCell: function () {
+            return this.value() === 'X' ? true : false;
+        },
+        canBeOpened: function () {
+           return (this.notOpened() && !this.isMineCell() && !this.isMarked());
+        }
     };
 
-    // check boolean queries
-    this.isInside = function (x, y) {
-        return (0 <= x && x < width && 0 <= y && y < height);
-    };
-    this.notOpened = function (cell) {
-        return !openedCellsMap[cell.x][cell.y];
-    };
-    this.notMarked = function (cell) {
-        return !markedCellsMap[cell.x][cell.y];
-    };
-    this.isMineCell = function (cell) {
-        return this.valueAt(cell) === 'X' ? true : false;
-    };
-    this.canBeOpened = function (cell) {
-        return (this.notOpened(cell) && !this.isMineCell(cell) && this.notMarked(cell));
+    this.modify = {
+        markOpened: function () {
+            game.maps.openedCells[this.x][this.y] = true;
+            game.status.unopenedSafeCellsCount -= 1;
+        },
+        markMarked: function () {
+            game.maps.markedCells[this.x][this.y] = true;
+        },
+        unMark: function () {
+            game.maps.markedCells[this.x][this.y] = false;
+        },
+        setStyle: function (modifier) {
+            this.elt.className = 'row__cell ' + modifier;
+        },
+        removeListeners: function () {
+            // seek to replace this quirky, SO influenced structure
+            var new_elt = this.elt.cloneNode(true);
+            this.elt.parentNode.replaceChild(new_elt, this.elt);
+            return new_elt;
+        },
+        open: function () {
+            var val = this.cell.query.value(),
+                new_elt = this.removeListeners();
+            (function setOpenedCellStyle() {
+                new_elt.className = 'row__cell opened';
+                new_elt.innerHTML = (val === 0 ? '' : val);
+            }());
+            this.markOpened();
+            if (game.status.unopenedSafeCellsCount === 0) {
+                game.statusChanges.win(this.cell);
+            }
+        }
     };
 
-    // retrieve cell
-    this.Cell = function (x, y) {
-        var query = 'span[data-x="' + x + '"][data-y="' + y + '"]';
-        this.elt = document.querySelectorAll(query)[0];
-        this.x = x;
-        this.y = y;
-    };
-    this.getCellFrom = function (evt) {
-        var x = parseInt(evt.target.getAttribute('data-x'), 10),
-            y = parseInt(evt.target.getAttribute('data-y'), 10);
-        return new this.Cell(x, y);
-    };
+    // give necessary access query and modify methods
+    this.query.x = x;
+    this.query.y = y;
+    this.modify.x = x;
+    this.modify.y = y;
+    this.modify.elt = this.elt;
+    this.modify.cell = this;
+};
 
-    // retrieve coords / cells
-    this.neighbourCoords = function (x, y) {
+game.Cell.getFrom = function (evt) {
+    var x = parseInt(evt.target.getAttribute('data-x'), 10),
+        y = parseInt(evt.target.getAttribute('data-y'), 10);
+    return new game.Cell(x, y);
+};
+
+game.coords = {
+    isInside: function (x, y) {
+        return (0 <= x && x < game.dimensions.width && 0 <= y && y < game.dimensions.height);
+    },
+    getNeighbours: function (x,y) {
         var arr = [[x - 1, y], [x + 1, y], [x, y - 1],
                   [x, y + 1], [x - 1, y - 1], [x - 1, y + 1],
                   [x + 1, y - 1], [x + 1, y + 1]],
@@ -72,15 +209,18 @@ function Game(width, height, seed) {
         for (i = 0; i < arr.length; i += 1) {
             x1 = arr[i][0];
             y1 = arr[i][1];
-            if (this.isInside(x1, y1)) {
+            if (game.coords.isInside(x1, y1)) {
                 ret.push(arr[i]);
             }
         }
         return ret;
-    };
-    this.neighbourCellsFor = function (cell) {
+    }
+};
+
+game.cells = {
+    getNeighbours: function (cell) {
         var ret = [],
-            neighbours = this.neighbourCoords(cell.x, cell.y),
+            neighbours = game.coords.getNeighbours(cell.x, cell.y),
             i,
             x,
             y,
@@ -88,365 +228,214 @@ function Game(width, height, seed) {
         for (i = 0; i < neighbours.length; i += 1) {
             x = neighbours[i][0];
             y = neighbours[i][1];
-            retrieved_cell = new this.Cell(x, y);
+            retrieved_cell = new game.Cell(x, y);
             ret.push(retrieved_cell);
         }
         return ret;
-    };
-    this.cellsNotOpened = function () {
+    },
+    notOpened: function () {
         var ret = [],
             x,
             y;
-        for (x = 0; x < width; x += 1) {
-            for (y = 0; y < height; y += 1) {
-                if (!openedCellsMap[x][y]) {
-                    ret.push(new this.Cell(x, y));
+        for (x = 0; x < game.dimensions.width; x += 1) {
+            for (y = 0; y < game.dimensions.height; y += 1) {
+                if (!game.maps.openedCells[x][y]) {
+                    ret.push(new game.Cell(x, y));
                 }
             }
         }
         return ret;
-    };
-    this.remainingCellsWithMines = function (cell) {
+    },
+    remainingMines: function (cell) {
         var ret = [],
             x,
             y,
             new_cell;
-        for (x = 0; x < width; x += 1) {
-            for (y = 0; y < height; y += 1) {
+        for (x = 0; x < game.dimensions.width; x += 1) {
+            for (y = 0; y < game.dimensions.height; y += 1) {
                 // ignore the opened mine
                 if (!(cell.x === x && cell.y === y)) {
-                    new_cell = new this.Cell(x, y);
-                    if (this.isMineCell(new_cell)) {
+                    new_cell = new game.Cell(x, y);
+                    if (new_cell.query.isMineCell()) {
                         ret.push(new_cell);
                     }
                 }
             }
         }
         return ret;
-    };
-
-    // modify cell
-    this.markOpened = function (cell) {
-        openedCellsMap[cell.x][cell.y] = true;
-        this.safeCellsCount -= 1;
-    };
-    this.markMarked = function (cell) {
-        markedCellsMap[cell.x][cell.y] = true;
-    };
-    this.unMark = function (cell) {
-        markedCellsMap[cell.x][cell.y] = false;
-    };
-    this.removeListeners = function (cell) {
-        // this method is quirky, especially as it 1) has a return value,
-        // and 2) it returns an element not a cell
-        // apparently replacing child is a good way to remove listeners
-        // that's the rationale for the quirkiness
-        var new_elt = cell.elt.cloneNode(true);
-        cell.elt.parentNode.replaceChild(new_elt, cell.elt);
-        return new_elt;
-    };
-    this.openThis = function (cell) {
-        var val = this.valueAt(cell),
-            new_elt = this.removeListeners(cell);
-        (function setOpenedCellStyle() {
-            new_elt.className = 'row__cell opened';
-            new_elt.innerHTML = (val === 0 ? '' : val);
-        }());
-        this.markOpened(cell);
-        if (this.safeCellsCount === 0) {
-            this.gameCompleted(cell);
+    },
+    showMines: function (cell) {
+        var cells = game.cells.remainingMines(cell),
+            i,
+            var_cell;
+        for (i = 0; i < cells.length; i += 1) {
+            var_cell = cells[i];
+            if (var_cell.query.isMarked()) {
+                var_cell.modify.setStyle('mine correct');
+                game.maps.markedCells[var_cell.x][var_cell.y] = false;
+            } else {
+                var_cell.elt.innerHTML = String.fromCharCode(164);
+                var_cell.modify.setStyle('mine revealed');
+            }
         }
-    };
-    this.setMineStyle = function (elt, modifier) {
-        elt.className = 'row__cell ' + modifier;
-    };
-
-    // modify multiple cells
-    this.removeRemainingListeners = function () {
-        var cells = this.cellsNotOpened(),
+    },
+    removeListeners: function () {
+        var cells = game.cells.notOpened(),
             i;
         for (i = 0; i < cells.length; i += 1) {
-            this.removeListeners(cells[i]);
+            cells[i].modify.removeListeners();
         }
-    };
-    this.revealMines = function (cell) {
-        var cells = this.remainingCellsWithMines(cell),
-            i,
-            curr;
-        for (i = 0; i < cells.length; i += 1) {
-            curr = cells[i];
-            if (this.notMarked(curr)) {
-                curr.elt.innerHTML = String.fromCharCode(164);
-                this.setMineStyle(curr.elt, 'mine revealed');
-            } else {
-                this.setMineStyle(curr.elt, 'mine correct');
-                markedCellsMap[curr.x][curr.y] = false;
-            }
-        }
-    };
-    this.revealIncorrectMines = function () {
+    },
+    showIncorrectMines: function () {
         var x, y, cell;
-        for (x = 0; x < width; x += 1) {
-            for (y = 0; y < height; y += 1) {
-                if (markedCellsMap[x][y]) {
-                    cell = new this.Cell(x, y);
-                    this.setMineStyle(cell.elt, 'mine incorrect');
+        for (x = 0; x < game.dimensions.width; x += 1) {
+            for (y = 0; y < game.dimensions.height; y += 1) {
+                if (game.maps.markedCells[x][y]) {
+                    cell = new game.Cell(x, y);
+                    cell.modify.setStyle('mine incorrect');
                 }
             }
         }
-    };
+    }
+};
 
-    // game creation and start methods
-    this.createMines = function (cellClicked) {
-        // private helper
-        var game = this;
-        function populateMineMap(height, width, cellClicked, game) {
-          // private helper
-            function tallyNeighbourMines(map, mineCoords, game) {
-                var p, x0, y0, coords, q, x, y;
-                for (p = 0; p < mineCoords.length; p += 1) {
-                    x0 = mineCoords[p][0];
-                    y0 = mineCoords[p][1];
-                    coords = game.neighbourCoords(x0, y0);
-                    for (q = 0; q < coords.length; q += 1) {
-                        x = coords[q][0];
-                        y = coords[q][1];
-                        if (game.isInside(x, y) && (map[x][y] !== 'X')) { map[x][y] += 1; }
-                    }
+game.logic = {
+    examineNeighbours: function(cell) {
+        var arr = game.cells.getNeighbours(cell),
+            i,
+            var_cell;
+        for (i = 0; i < arr.length; i += 1) {
+            var_cell = arr[i];
+            if (var_cell.query.canBeOpened()) {
+                var_cell.modify.open();
+                if (this.shouldCheckNeighbours(var_cell)) {
+                    this.examineNeighbours(var_cell);
                 }
             }
-            // private helpers
-            function doCreateMine(x, y, cellClicked) {
-                // do not put a mine in the first cell clicked
-                return Math.random() < seed && !(cellClicked.x === x && cellClicked.y === y);
-            }
-            function createMine(map, x, y, mineCoords) {
-                map[x][y] = 'X';
-                mineCoords.push([x, y]);
-                game.mineCount += 1;
-            }
-            function createEmpty(map, x, y) {
-                map[x][y] = 0;
-                game.safeCellsCount += 1;
-            }
-            // create mines main method
-            var mineCoords = [],
-                map = [],
-                x,
-                y;
-            for (x = 0; x < width; x += 1) {
-                map[x] = [];
-                for (y = 0; y < height; y += 1) {
-                    if (doCreateMine(x, y, cellClicked)) {
-                        createMine(map, x, y, mineCoords);
-                    } else {
-                        createEmpty(map, x, y);
-                    }
-                }
-            }
-            // setup board
-            tallyNeighbourMines(map, mineCoords, game);
-            return map;
         }
-        // setup board
-        mineMap = populateMineMap(height, width, cellClicked, game);
-    };
+    },
+    shouldCheckNeighbours: function(cell) {
+        return cell.query.value() === 0;
+    },
+    executeClickOpen: function(cell) {
+        if (cell.query.isMineCell()) {
+            game.statusChanges.lose(cell);
+        } else {
+            cell.modify.open();
+            if (game.logic.shouldCheckNeighbours(cell)) {
+                game.logic.examineNeighbours(cell);
+            }
+        }
+    },
+    clickOpen: function(cell) {
+        if (!game.status.isStarted()) { game.statusChanges.start(cell); }
+        this.executeClickOpen(cell);
+    }
+};
 
-    this.gameStarted = function () {
-        return mineMap.length > 0;
-    };
-    this.startGame = function (clickedCell) {
-        this.createMines(clickedCell);
-        this.showMineCount(this.mineCount);
-        this.showGameStatus('Playing...');
+game.handlers = {
+    openOrMark: function(evt) {
+        var cell = game.Cell.getFrom(evt);
+        if (evt.which === 1) { // leftclick
+            game.logic.clickOpen(cell);
+        } else { // middleclick & rightclick
+            game.handlers.mark(cell);
+        }
+    },
+    mark: function(cell) {
+        cell.modify.markMarked();
+        var elt = cell.modify.removeListeners();
+        elt.addEventListener('mousedown', game.handlers.unMark);
+        elt.className = 'row__cell marked';
+        elt.innerHTML = 'X';
+    },
+    unMark: function(evt) {
+        var cell = game.Cell.getFrom(evt),
+            elt;
+        cell.modify.unMark();
+        elt = cell.modify.removeListeners();
+        game.handlers.addEventListeners(elt);
+    },
+    setHoverStyle: function(evt) {
+        var elt = evt.target;
+        elt.innerHTML = '?';
+        elt.className += ' hover';
+    },
+    removeHoverStyle: function(evt) {
+        var elt = evt.target;
+        elt.innerHTML = '';
+        elt.className = 'row__cell';
+    },
+    addEventListeners: function(elt) {
+        elt.addEventListener('mousedown', this.openOrMark);
+        elt.addEventListener('mouseover', this.setHoverStyle);
+        elt.addEventListener('mouseout', this.removeHoverStyle);
+    }
+};
 
-    };
-    this.gameCompleted = function (cell) {
-        this.showGameStatus('You Win!');
-        this.revealMines(cell);
-        this.removeRemainingListeners();
-    };
-    this.gameOver = function (cell) {
-        this.showGameStatus('Game Over!');
-        this.revealMines(cell);
-        this.setMineStyle(cell.elt, 'mine exploded');
-        cell.elt.innerHTML = String.fromCharCode(164);
-        this.revealIncorrectMines();
-        this.removeRemainingListeners();
-    };
-
-    // game information display methods
-    this.showGameStatus = function (status) {
-        var div = document.getElementById('game-status');
-        div.innerHTML = status;
-    };
-    this.showMineCount = function (count) {
-        var div = document.getElementById('mine-count');
-        div.innerHTML = count;
-    };
-    this.clearDisplays = function () {
-        MINESWEEPER.showGameStatus('&nbsp;');
-        MINESWEEPER.showMineCount('&nbsp');
-    };
-}
-
-// Will be bound to start buttons
-function createGame(params) {
-    MINESWEEPER = new Game(params.width, params.height, params.seed);
-    // BoardElements are inserted inside #board div
-    // The basic units are rows and cells
-    // Cells have listeners mouseover, mousedown, and mouseout
-    // The game logic is described here and handlers attached to listeners
-    // Starting the game, ending the game, evaluating clicks happen here
-    function createBoardElements(width, height) {
-        var board = document.getElementById('minesweeper');
-        // clear previous board, if present
+game.setupDOM = {
+    addCellToRow: function(row, i) {
+        var elt = document.createElement('span');
+        row.appendChild(elt);
+        elt.setAttribute('class', 'row__cell');
+        elt.setAttribute('data-x', i);
+        elt.setAttribute('data-y', elt.parentNode.getAttribute('data-y'));
+        game.handlers.addEventListeners(elt);
+    },
+    createRow: function(j) {
+        var row = document.createElement('div'), i;
+        row.setAttribute('class', 'row');
+        row.setAttribute('data-y', j);
+        for (i = 0; i < game.dimensions.width; i += 1) {
+            game.setupDOM.addCellToRow(row, i);
+        }
+        return row;
+    },
+    buildBoard: function() {
+        game.setupDOM.board = document.getElementById('minesweeper');
         (function clear() {
-            MINESWEEPER.clearDisplays();
-            while (board.firstChild) {
-                board.removeChild(board.firstChild);
+            game.status.clearDisplays();
+            while (game.setupDOM.board.firstChild) {
+                game.setupDOM.board.removeChild(game.setupDOM.board.firstChild);
             }
         }());
-        function setEventHandlersTo(elt) {
-
-            function executeClickOpen(cell) {
-
-                function checkNeighbours(cell) {
-                    return MINESWEEPER.valueAt(cell) === 0;
-                }
-
-                function examineNeighbours(cell) {
-                    var arr = MINESWEEPER.neighbourCellsFor(cell),
-                        i,
-                        curr;
-                    for (i = 0; i < arr.length; i += 1) {
-                        curr = arr[i];
-                        if (MINESWEEPER.canBeOpened(curr)) {
-                            MINESWEEPER.openThis(curr);
-                            if (checkNeighbours(curr)) {
-                                examineNeighbours(curr);
-                            }
-                        }
-                    }
-                }
-
-                if (MINESWEEPER.isMineCell(cell)) {
-                    MINESWEEPER.gameOver(cell);
-                } else {
-                    MINESWEEPER.openThis(cell);
-                    if (checkNeighbours(cell)) {
-                        examineNeighbours(cell);
-                    }
-                }
-            }
-
-            function clickOpen(cell) {
-                if (!MINESWEEPER.gameStarted()) { MINESWEEPER.startGame(cell); }
-                executeClickOpen(cell);
-            }
-
-            function unMark(evt) {
-                var cell = MINESWEEPER.getCellFrom(evt);
-                MINESWEEPER.unMark(cell);
-                elt = MINESWEEPER.removeListeners(cell);
-                addDefaultListeners(elt); // how to refactor this to pass jslint?
-            }
-
-            function markThis(cell) {
-                MINESWEEPER.markMarked(cell);
-                elt = MINESWEEPER.removeListeners(cell);
-                elt.addEventListener('mousedown', unMark);
-                elt.className = 'row__cell marked';
-                elt.innerHTML = 'X';
-            }
-
-            function addDefaultListeners(elt) {
-                function clickNotMarked(evt) {
-                    var cell = MINESWEEPER.getCellFrom(evt);
-                    if (evt.which === 1) { // leftclick
-                        clickOpen(cell);
-                    } else { // middleclick & rightclick
-                        markThis(cell);
-                    }
-                }
-                function mouseOverHandler(evt) {
-                    (function setHoverStyle() {
-                        elt = evt.target;
-                        elt.innerHTML = '?';
-                        elt.className += ' hover';
-                    }());
-                }
-                function mouseOutHandler(evt) {
-                    (function resetHoverStyle() {
-                        elt = evt.target;
-                        elt.innerHTML = '';
-                        elt.className = 'row__cell';
-                    }());
-                }
-                elt.addEventListener('mousedown', clickNotMarked);
-                elt.addEventListener('mouseover', mouseOverHandler);
-                elt.addEventListener('mouseout', mouseOutHandler);
-            }
-
-            addDefaultListeners(elt);
-
-        }
-
         (function disableContextMenu() { // from SO, enables right click features
-            board.oncontextmenu = function (evt) {
+            game.setupDOM.board.oncontextmenu = function (evt) {
                 (function stopEvent() {
                     if (evt.preventDefault !== undefined) { evt.preventDefault(); }
                     if (evt.stopPropagation !== undefined) { evt.stopPropagation(); }
                 }());
             };
         }());
-        function addCellElementTo(row, i) {
-            var elt = document.createElement('span');
-            row.appendChild(elt);
-            elt.setAttribute('class', 'row__cell');
-            elt.setAttribute('data-x', i);
-            elt.setAttribute('data-y', elt.parentNode.getAttribute('data-y'));
-            setEventHandlersTo(elt);
+        var j;
+        for (j = 0; j < game.dimensions.height; j += 1) {
+            game.setupDOM.board.appendChild(game.setupDOM.createRow(j));
         }
-        function createRowElement(j) {
-            var row = document.createElement('div'), i;
-            row.setAttribute('class', 'row');
-            row.setAttribute('data-y', j);
-            for (i = 0; i < width; i += 1) {
-                addCellElementTo(row, i);
-            }
-            return row;
-        }
-        function createRows(board) {
-            var j;
-            for (j = 0; j < height; j += 1) {
-                board.appendChild(createRowElement(j));
-            }
-        }
-        createRows(board);
-    }
-    createBoardElements(params.width, params.height);
-}
-
-// User creates a new game by pressing start buttons
-function createStartButtons() {
-    function createButton(text, className, params) {
+    },
+    startButton: function(text, className, params) {
         var button = document.createElement('button');
         button.innerHTML = text;
         button.className = className;
         button.addEventListener('click', function () {
-            createGame(params);
+            game.new(params);
         });
         return button;
+    },
+    buildStartButtons: function() {
+        var div = document.getElementById('start-buttons'),
+            params;
+        params = { width: 15, height: 15, seed: 0.083 };
+        div.appendChild(game.setupDOM.startButton('Easy', 'easy', params));
+        params = { width: 30, height: 20, seed: 0.134 };
+        div.appendChild(game.setupDOM.startButton('Intermediate', 'intermediate', params));
+        params = { width: 54, height: 30, seed: 0.15};
+        div.appendChild(game.setupDOM.startButton('Hard', 'hard', params));
     }
-    var div = document.getElementById('start-buttons'),
-        params;
-    params = { width: 15, height: 15, seed: 0.083 };
-    div.appendChild(createButton('Easy', 'easy', params));
-    params = { width: 30, height: 20, seed: 0.134 };
-    div.appendChild(createButton('Intermediate', 'intermediate', params));
-    params = { width: 54, height: 30, seed: 0.15};
-    div.appendChild(createButton('Hard', 'hard', params));
-}
+};
 
-createStartButtons();
+game.new = function(params) {
+    game(params.width, params.height, params.seed);
+    game.setupDOM.buildBoard();
+};
+
+game.setupDOM.buildStartButtons();
