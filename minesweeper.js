@@ -334,11 +334,14 @@ game.logic = {
 };
 
 game.handlers = {
+    isLeftClick: function(evt) {
+        return (evt.which === 1)
+    },
     openOrMark: function(evt) {
         var cell = game.Cell.getFrom(evt);
-        if (evt.which === 1) { // leftclick
+        if (game.handlers.isLeftClick(evt)) {
             game.logic.clickOpen(cell);
-        } else { // middleclick & rightclick
+        } else {
             game.handlers.mark(cell);
         }
     },
@@ -350,6 +353,7 @@ game.handlers = {
         elt.innerHTML = 'X';
     },
     unMark: function(evt) {
+        if (game.handlers.isLeftClick(evt)) { return; }
         var cell = game.Cell.getFrom(evt),
             elt;
         cell.modify.unMark();
