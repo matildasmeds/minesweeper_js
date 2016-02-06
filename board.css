@@ -44,6 +44,11 @@ body {
 
 .row__cell.hover {
     background-color: thistle;
+    cursor: pointer;
+}
+
+.row__cell.marked {
+    cursor: pointer;
 }
 
 .row__cell.mine {
