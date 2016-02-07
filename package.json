@@ -1,0 +1,10 @@
+{
+  "name": "minesweeper_js",
+  "version": "0.0.1",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "grunt": "latest",
+    "grunt-mocha": "^0.4.15",
+    "mocha": "^2.4.5"
+  }
+}
