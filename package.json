@@ -1,6 +1,11 @@
 {
   "name": "minesweeper_js",
   "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/matildasmeds/minesweeper_js"
+  },
   "devDependencies": {
     "chai": "^3.5.0",
     "grunt": "^1.0.1",
