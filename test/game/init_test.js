@@ -8,10 +8,10 @@ describe('game.init.mineMap()', function() {
         chai.expect(game.maps.mines.length).to.equal(2);
         chai.expect(game.maps.mines[0].length).to.equal(3);
     });
-    it('should update mineCount', {
+    it('should update mineCount', function() {
         chai.expect(game.status.mineCount).to.equal(5);
     });
-    it('should update unopenedSafeCellsCount', {
+    it('should update unopenedSafeCellsCount', function() {
         chai.expect(game.status.unopenedSafeCellsCount).to.equal(1);
     });
 });

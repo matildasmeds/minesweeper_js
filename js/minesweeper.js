@@ -424,6 +424,10 @@ game.setupDOM = {
     buildStartButtons: function () {
         var div = document.getElementById('start-buttons'),
             params;
+        //For example, in unit tests
+        if (!div) {
+          return;
+        }
         params = {width: 15, height: 15, mineFrequency: 0.083};
         div.appendChild(game.setupDOM.startButton('Easy', 'easy', params));
         params = {width: 30, height: 20, mineFrequency: 0.134};
