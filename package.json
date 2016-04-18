@@ -3,8 +3,12 @@
   "version": "0.0.1",
   "devDependencies": {
     "chai": "^3.5.0",
-    "grunt": "latest",
-    "grunt-mocha": "^0.4.15",
-    "mocha": "^2.4.5"
+    "grunt": "^1.0.1",
+    "grunt-karma": "^0.12.2",
+    "karma": "^0.13.22",
+    "karma-chai": "^0.1.0",
+    "karma-mocha": "^0.2.2",
+    "mocha": "^2.4.5",
+    "phantomjs-prebuilt": "^2.1.7"
   }
 }
