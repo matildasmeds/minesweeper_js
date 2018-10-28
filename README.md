@@ -1,15 +1,11 @@
 # minesweeper_js
-MineSweeper clone as JS practice project
+MineSweeper clone to practice JavaScript.
 
-## What is there?
-- choose game level
-- randomized minemap
-- marking and unmarking mines
-- no mine on first click
-- win game ny revealing all safe cells
-- lose game by hitting a mine
+## Features
+- User can choose game level
+- Randomized minemap
+- No mine on first click
+- Win game ny revealing all safe cells
+- Lose game by hitting a mine
 
-## What is not there
-- tests
-- further optimization efforts
-- fixed number of mines per level, it's a probability function atm
+Published under MIT Licence, Copyright © 2016 Matilda Smeds
