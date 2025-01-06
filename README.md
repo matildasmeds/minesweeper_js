@@ -5,7 +5,7 @@ MineSweeper clone to practice JavaScript.
 - User can choose game level
 - Randomized minemap
 - No mine on first click
-- Win game ny revealing all safe cells
+- Win game by revealing all safe cells
 - Lose game by hitting a mine
 
 Published under MIT Licence, Copyright © 2016 Matilda Smeds
